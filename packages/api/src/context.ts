@@ -1,5 +1,6 @@
 import { getServerSession, type Session } from "@acme/auth";
 import { prisma } from "@acme/db";
+// another import for rdsprisma
 import { type inferAsyncReturnType } from "@trpc/server";
 import { type CreateNextContextOptions } from "@trpc/server/adapters/next";
 
@@ -16,9 +17,13 @@ type CreateContextOptions = {
  * @see https://beta.create.t3.gg/en/usage/trpc#-servertrpccontextts
  */
 export const createContextInner = async (opts: CreateContextOptions) => {
+  const rdsprisma = {
+    hello: "world",
+  };
   return {
     session: opts.session,
     prisma,
+    rdsprisma,
   };
 };
 

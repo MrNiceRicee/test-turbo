@@ -13,6 +13,8 @@ import type { inferProcedureOutput } from "@trpc/server";
 import type { AppRouter } from "@acme/api";
 
 import { trpc } from "../utils/trpc";
+import { TRPCClientError } from "@trpc/client";
+import { useNavigate } from "react-router-native";
 
 const PostCard: React.FC<{
   post: inferProcedureOutput<AppRouter["post"]["all"]>[number];
@@ -27,7 +29,7 @@ const PostCard: React.FC<{
 
 const CreatePost: React.FC = () => {
   const utils = trpc.useContext();
-  const { mutate } = trpc.post.create.useMutation({
+  const { mutate, error: err } = trpc.post.create.useMutation({
     async onSuccess() {
       await utils.post.all.invalidate();
     },
@@ -36,17 +38,31 @@ const CreatePost: React.FC = () => {
   const [title, onChangeTitle] = React.useState("");
   const [content, onChangeContent] = React.useState("");
 
+  const formatTRPCError = (err: any) => {
+    if (err instanceof TRPCClientError) {
+      return err.data;
+    }
+  };
+
   return (
     <View className="p-4 border-t-2 border-gray-500 flex flex-col">
+      <Text>{JSON.stringify(err?.data?.zodError?.fieldErrors, null, 2)}</Text>
       <TextInput
         className="border-2 border-gray-500 rounded p-2 mb-2"
         onChangeText={onChangeTitle}
         placeholder="Title"
       />
       <TextInput
-        className="border-2 border-gray-500 rounded p-2 mb-2"
+        className="border-2 border-gray-500/10 rounded p-2 mb-2"
         onChangeText={onChangeContent}
         placeholder="Content"
+        style={{
+          shadowColor: "rgba(0,0,0, .4)", // IOS
+          shadowOffset: { height: 1, width: 1 }, // IOS
+          shadowOpacity: 1, // IOS
+          shadowRadius: 1, //IOS
+          elevation: 2, // Android
+        }}
       />
       <TouchableOpacity
         className="bg-indigo-500 rounded p-2"
@@ -64,8 +80,16 @@ const CreatePost: React.FC = () => {
 };
 
 export const HomeScreen = () => {
+  const navigate = useNavigate();
   const postQuery = trpc.post.all.useQuery();
+  const mobileQuery = trpc.mobile.getUsers.useQuery({
+    limit: 10,
+  });
   const [showPost, setShowPost] = React.useState<string | null>(null);
+
+  const onPostPress = (id: string) => {
+    navigate(`/post/${id}`);
+  };
 
   return (
     <SafeAreaView>
@@ -85,12 +109,15 @@ export const HomeScreen = () => {
           )}
         </View>
 
+        <Text className="font-semibold">Mobile users:</Text>
+        <Text>{mobileQuery.data?.map((user) => user.name).join(", ")}</Text>
+
         <FlashList
           data={postQuery.data}
           estimatedItemSize={20}
           ItemSeparatorComponent={() => <View className="h-2" />}
           renderItem={(p) => (
-            <TouchableOpacity onPress={() => setShowPost(p.item.id)}>
+            <TouchableOpacity onPress={() => onPostPress(p.item.id)}>
               <PostCard post={p.item} />
             </TouchableOpacity>
           )}
